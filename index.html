@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뭐 먹지?</title>
+<style>
+  :root{
+    --bg: #1f231d;
+    --surface: #262b21;
+    --surface-2: #313728;
+    --border: #454c3d;
+    --accent: #e8a33d;
+    --accent-ink: #1f231d;
+    --stamp: #c1443c;
+    --recent: #6fc3a9;
+    --fav: #ff9db5;
+    --text: #f4efe6;
+    --text-muted: #a3a68f;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{
+    margin:0; padding:0; height:100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+  }
+  .app{
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .content{
+    flex: 1;
+    padding: 0 0 100px;
+  }
+  .page{ padding: 22px 20px 0; }
+
+  /* 상단 고정 얇은 창들 */
+  .topstack{
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--bg);
+    padding: 8px 12px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 6px 12px rgba(0,0,0,.35);
+  }
+  .win{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .win-head{
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; cursor: pointer; user-select: none;
+  }
+  .dname{ font-weight: 800; color: var(--accent); font-size: 13px; white-space: nowrap; }
+  .dstat{
+    flex: 1; min-width: 0; text-align: right; font-size: 11px; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .caret{ font-size: 10px; color: var(--text-muted); }
+  .win-body{ padding: 0 10px 10px; }
+  .win-keys{ padding: 6px 8px; }
+  .chip-row{
+    display: flex; gap: 6px; overflow-x: auto; white-space: nowrap;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .chip-row::-webkit-scrollbar{ display: none; }
+  .chip-row .chip{ flex: none; padding: 5px 11px; font-size: 12px; }
+  .win-mode{ display: flex; align-items: center; gap: 10px; padding: 5px 8px; }
+  .win-mode .seg-btn{ padding: 4px 10px; font-size: 12px; }
+  .win-mode .hint{
+    flex: 1; min-width: 0; font-size: 11px; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .win-act{ display: flex; gap: 8px; padding: 6px; }
+  .act-clear{
+    padding: 0 14px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 8px; font-size: 12px;
+    color: var(--text-muted); cursor: pointer; user-select: none;
+  }
+  .win-act .roll-btn{ margin: 0; padding: 10px; font-size: 14px; flex: 1; border-radius: 8px; }
+  .stamp-on-ticket{
+    position: absolute; top: 16px; right: 12px;
+    background: var(--stamp); color: #fff; font-size: 14px; font-weight: 900;
+    padding: 6px 12px; border-radius: 8px; border: 2px solid #fff;
+    transform: scale(3) rotate(-14deg); opacity: 0;
+    animation: stampDown .35s cubic-bezier(.2,1.4,.4,1) forwards;
+  }
+  .ticket.stamping .btn-row{ pointer-events: none; opacity: .5; }
+  .title{
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin: 0 0 4px;
+  }
+  .subtitle{
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0 0 22px;
+    line-height: 1.5;
+  }
+  .section{ margin-bottom: 20px; }
+  .section-label{
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .chips{ display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip{
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    transition: background .15s, border-color .15s, color .15s, transform .1s;
+    white-space: nowrap;
+  }
+  .chip:active{ transform: scale(0.95); }
+  .chip.active{
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 700;
+  }
+  .menu-pick-list{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 26vh;
+    overflow-y: auto;
+    padding: 12px;
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .menu-pick{
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid transparent;
+  }
+  .menu-pick.active{
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 700;
+  }
+  .roll-btn{
+    margin-top: 4px;
+    width: 100%;
+    padding: 16px;
+    border-radius: 14px;
+    border: none;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .roll-btn:active{ transform: scale(0.98); }
+  .stage{ margin-top: 22px; }
+  .empty{
+    width: 100%;
+    border: 1.5px dashed var(--border);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 40px 20px;
+    line-height: 1.6;
+  }
+  .no-match{ color: var(--stamp); font-weight: 700; border-color: var(--stamp); }
+  .ticket{
+    width: 100%;
+    background: var(--surface);
+    border-radius: 4px;
+    position: relative;
+    padding: 30px 22px 22px;
+    overflow: hidden;
+    text-align: center;
+  }
+  .ticket::before{
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 10px;
+    background:
+      radial-gradient(circle at 10px 0px, transparent 6px, var(--bg) 6.5px) top left,
+      var(--surface);
+    background-size: 20px 20px;
+    background-repeat: repeat-x;
+  }
+  .ticket-emoji{
+    font-size: 56px;
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+  .ticket-eyebrow{ font-size: 12px; color: var(--text-muted); margin: 4px 0; }
+  .ticket-name{
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin: 4px 0 14px;
+    min-height: 30px;
+  }
+  .ticket-tags{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .tag{
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-row{ display: flex; gap: 8px; }
+  .confirm-btn, .reroll-btn{
+    flex: 1;
+    padding: 13px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .confirm-btn{ border: none; background: var(--accent); color: var(--accent-ink); }
+  .reroll-btn{ border: 1px solid var(--border); background: transparent; color: var(--text); }
+
+  /* bottom nav */
+  .navbar{
+    position: sticky;
+    bottom: 0;
+    left: 0; right: 0;
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  .navbtn{
+    flex: 1;
+    padding: 12px 0 14px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+  .navbtn .ico{ font-size: 20px; }
+  .navbtn.active{ color: var(--accent); font-weight: 700; }
+
+  /* categories tab */
+  .menu-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .menu-card .em{ font-size: 26px; }
+  .menu-card .info{ flex: 1; min-width:0; }
+  .menu-card .nm{ font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .menu-card .tg{ display:flex; flex-wrap: wrap; gap: 4px; }
+  .menu-card .actions{ display: flex; flex-direction: column; gap: 6px; }
+  .icon-btn{
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .icon-btn.danger{ color: var(--stamp); border-color: var(--stamp); }
+
+  .form-box{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 18px;
+  }
+  .form-row{ margin-bottom: 10px; }
+  .form-row label{ display:block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
+  .form-row input{
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .form-actions{ display:flex; gap: 8px; margin-top: 12px; }
+  .primary-btn, .ghost-btn{
+    flex:1; padding: 11px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor:pointer;
+  }
+  .primary-btn{ border:none; background: var(--accent); color: var(--accent-ink); }
+  .ghost-btn{ border: 1px solid var(--border); background: transparent; color: var(--text); }
+
+  .confirm-inline{ display:flex; gap:6px; }
+  .form-row textarea{
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+  }
+  .chip, .menu-pick{ -webkit-touch-callout: none; user-select: none; touch-action: manipulation; }
+  .star{ display: none; color: var(--fav); margin-right: 3px; font-size: 11px; }
+  .fav > .star{ display: inline; }
+  .active > .star{ color: var(--accent-ink); }
+  .chip.recent:not(.active){ border-color: var(--recent); color: var(--recent); background: rgba(111,195,169,.10); }
+  .menu-pick.recent:not(.active){ outline: 1px solid var(--recent); color: var(--recent); background: rgba(111,195,169,.10); }
+  .win-fav{ display: flex; align-items: center; gap: 6px; padding: 6px 8px; }
+  .fav-mark{ color: var(--fav); font-size: 13px; flex: none; }
+  .win-fav .chip-row{ flex: 1; min-width: 0; }
+  .win-fav .star{ display: none !important; }
+  .legend{ margin-top: 18px; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+  .cnt{ opacity:.65; margin-left:5px; font-size:11px; }
+  .chip.active .cnt{ opacity:.8; }
+  .seg{ display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .seg-btn{ padding:3px 10px; font-size:11px; cursor:pointer; color:var(--text-muted); }
+  .seg-btn.on{ background:var(--accent); color:var(--accent-ink); font-weight:800; }
+  .section-label.toggle{ cursor:pointer; user-select:none; }
+  .search{
+    width:100%; padding:9px 12px; margin-bottom:8px; border-radius:8px;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-size:13px;
+  }
+  .muted-note{ font-size:12px; color:var(--text-muted); }
+  .cat-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .cat-head .section-label{ margin-bottom:0; }
+  .deadbox{ background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
+  .deadbox .section-label{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .deadbox .clean-all{ font-size:11px; color:var(--stamp); cursor:pointer; font-weight:700; }
+  .dead-chip{
+    display:inline-flex; align-items:center; gap:5px; padding:5px 10px; margin:0 6px 6px 0;
+    border-radius:999px; background: var(--surface-2); border:1px solid var(--border); font-size:12px; color: var(--text-muted);
+  }
+  .dead-x{ cursor:pointer; color: var(--stamp); font-weight:800; }
+  .more-btn{
+    width:100%; padding:11px; margin-top:4px; text-align:center; font-size:13px; font-weight:700;
+    border:1px solid var(--border); border-radius:10px; color:var(--text-muted); cursor:pointer;
+  }
+  .import-msg{ margin-top: 10px; font-size: 13px; line-height: 1.6; color: var(--accent); }
+  .import-tags{ margin-top: 10px; font-size: 12px; color: var(--text-muted); line-height: 1.7; word-break: break-all; }
+
+  /* about tab */
+  .about-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 20px;
+    text-align: center;
+  }
+  .about-emoji{ font-size: 48px; margin-bottom: 10px; }
+  .about-name{ font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .about-desc{ font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+  /* stamp overlay */
+  .overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+  }
+  .overlay.show{ opacity: 1; pointer-events: all; }
+  .stamp-mark{
+    background: var(--stamp);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 900;
+    padding: 22px 34px;
+    border-radius: 12px;
+    border: 4px solid #fff;
+    transform: scale(3) rotate(-16deg);
+    opacity: 0;
+    text-align: center;
+  }
+  .overlay.show .stamp-mark{
+    animation: stampDown .35s cubic-bezier(.2,1.4,.4,1) forwards;
+  }
+  @keyframes stampDown{
+    0%{ transform: scale(3) rotate(-16deg); opacity: 0; }
+    60%{ transform: scale(0.9) rotate(-8deg); opacity: 1; }
+    100%{ transform: scale(1) rotate(-8deg); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="content" id="content"></div>
+  <div class="navbar" id="navbar"></div>
+</div>
+
+<script>
+const STORAGE_KEY = "menu-picker:menus";
+const LAST_KEY = "menu-picker:last-confirmed";
+const TAGS_KEY = "menu-picker:extra-tags";
+const PREFS_KEY = "menu-picker:prefs";
+
+const memStore = {};
+const store = {
+  get(key){
+    try{ return window.localStorage.getItem(key); }
+    catch(e){ return key in memStore ? memStore[key] : null; }
+  },
+  set(key, value){
+    try{ window.localStorage.setItem(key, value); }
+    catch(e){ memStore[key] = value; }
+  },
+  remove(key){
+    try{ window.localStorage.removeItem(key); }
+    catch(e){ delete memStore[key]; }
+  }
+};
+
+const DATA_KEY = "menu-picker:v1";
+const SCHEMA_VERSION = 1;
+let appData = null;
+
+function emptyData(){
+  return { version: SCHEMA_VERSION, menus: null, extraTags: [], favTags: [], favMenus: [], recent: { tags: [], menus: [] }, lastConfirmed: null };
+}
+
+// 옛 낱개 키(menu-picker:menus 등)에서 통합 키로 1회 이전. 이전 성공 시 옛 키는 지움
+function migrateOldKeys(){
+  const d = emptyData();
+  let found = false;
+  try{ const r = store.get(STORAGE_KEY); if(r){ d.menus = JSON.parse(r); found = true; } }catch(e){}
+  try{ const r = store.get(TAGS_KEY); if(r){ d.extraTags = JSON.parse(r); found = true; } }catch(e){}
+  try{
+    const r = store.get(PREFS_KEY);
+    if(r){
+      const o = JSON.parse(r);
+      d.favTags = Array.isArray(o.favTags) ? o.favTags : [];
+      d.favMenus = Array.isArray(o.favMenus) ? o.favMenus : [];
+      d.recent = { tags: Array.isArray(o.recent && o.recent.tags) ? o.recent.tags : [], menus: Array.isArray(o.recent && o.recent.menus) ? o.recent.menus : [] };
+      found = true;
+    }
+  }catch(e){}
+  try{ const r = store.get(LAST_KEY); if(r){ d.lastConfirmed = JSON.parse(r); found = true; } }catch(e){}
+  if(found){
+    [STORAGE_KEY, TAGS_KEY, PREFS_KEY, LAST_KEY].forEach(k => store.remove(k));
+  }
+  return d;
+}
+
+function persistAll(){
+  try{ store.set(DATA_KEY, JSON.stringify(appData)); }catch(e){ /* ignore */ }
+}
+
+function ensureData(){
+  if(appData) return;
+  try{
+    const r = store.get(DATA_KEY);
+    if(r){ appData = Object.assign(emptyData(), JSON.parse(r)); return; }
+  }catch(e){}
+  appData = migrateOldKeys();
+  persistAll();
+}
+
+const DEFAULT_MENUS = [
+  {id:"1", name:"삼겹살", emoji:"🥓", tags:["기름진거","고기","짠맛"]},
+  {id:"2", name:"김치찌개", emoji:"🍲", tags:["고기","신맛","짠맛"]},
+  {id:"3", name:"된장찌개", emoji:"🍲", tags:["채소","짠맛"]},
+  {id:"4", name:"비빔밥", emoji:"🍚", tags:["채소","짠맛"]},
+  {id:"5", name:"냉면", emoji:"🍜", tags:["채소","신맛"]},
+  {id:"6", name:"떡볶이", emoji:"🌶️", tags:["짠맛","단맛"]},
+  {id:"7", name:"짜장면", emoji:"🍜", tags:["기름진거","고기","단맛"]},
+  {id:"8", name:"짬뽕", emoji:"🍜", tags:["고기","짠맛"]},
+  {id:"9", name:"탕수육", emoji:"🍖", tags:["기름진거","고기","신맛","단맛"]},
+  {id:"10", name:"초밥", emoji:"🍣", tags:["고기","짠맛"]},
+  {id:"11", name:"크림파스타", emoji:"🍝", tags:["기름진거","짠맛"]},
+  {id:"12", name:"토마토파스타", emoji:"🍝", tags:["채소","신맛"]},
+  {id:"13", name:"후라이드치킨", emoji:"🍗", tags:["기름진거","고기","짠맛"]},
+  {id:"14", name:"양념치킨", emoji:"🍗", tags:["기름진거","고기","단맛","짠맛"]},
+  {id:"15", name:"삼계탕", emoji:"🍗", tags:["고기","짠맛"]},
+  {id:"16", name:"갈비찜", emoji:"🍖", tags:["고기","단맛","짠맛"]},
+  {id:"17", name:"잡채", emoji:"🍜", tags:["채소","고기","단맛"]},
+  {id:"18", name:"김밥", emoji:"🍙", tags:["채소","짠맛"]},
+  {id:"19", name:"라면", emoji:"🍜", tags:["기름진거","짠맛"]},
+  {id:"20", name:"우동", emoji:"🍜", tags:["채소","짠맛"]},
+  {id:"21", name:"스테이크", emoji:"🥩", tags:["고기","짠맛"]},
+  {id:"22", name:"샐러드", emoji:"🥗", tags:["채소","신맛"]},
+  {id:"23", name:"딤섬", emoji:"🥟", tags:["고기","짠맛"]},
+  {id:"24", name:"마라탕", emoji:"🌶️", tags:["고기","채소","짠맛"]},
+  {id:"25", name:"초코케이크", emoji:"🍰", tags:["기름진거","단맛"]},
+  {id:"26", name:"요거트볼", emoji:"🍧", tags:["채소","신맛","단맛"]},
+  {id:"27", name:"제육볶음", emoji:"🥓", tags:["기름진거","고기","짠맛","매운맛"]},
+  {id:"28", name:"닭갈비", emoji:"🍗", tags:["고기","짠맛","매운맛"]},
+  {id:"29", name:"불고기", emoji:"🥩", tags:["고기","단맛","짠맛"]},
+  {id:"30", name:"육개장", emoji:"🍲", tags:["고기","매운맛","짠맛"]},
+  {id:"31", name:"설렁탕", emoji:"🍲", tags:["고기","담백함","짠맛"]},
+  {id:"32", name:"순두부찌개", emoji:"🍲", tags:["해물","매운맛","짠맛"]},
+  {id:"33", name:"부대찌개", emoji:"🍲", tags:["기름진거","고기","매운맛","짠맛"]},
+  {id:"34", name:"감자탕", emoji:"🍖", tags:["고기","매운맛","짠맛"]},
+  {id:"35", name:"추어탕", emoji:"🍲", tags:["고기","담백함","짠맛"]},
+  {id:"36", name:"곱창전골", emoji:"🍲", tags:["기름진거","고기","매운맛","짠맛"]},
+  {id:"37", name:"콩나물국밥", emoji:"🍚", tags:["채소","담백함","짠맛"]},
+  {id:"38", name:"순대국밥", emoji:"🍲", tags:["고기","짠맛","고소함"]},
+  {id:"39", name:"닭볶음탕", emoji:"🍗", tags:["고기","매운맛","짠맛"]},
+  {id:"40", name:"족발", emoji:"🍖", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"41", name:"보쌈", emoji:"🥓", tags:["고기","담백함","짠맛"]},
+  {id:"42", name:"전주비빔밥", emoji:"🍚", tags:["채소","짠맛"]},
+  {id:"43", name:"돌솥비빔밥", emoji:"🍚", tags:["채소","고기","짠맛","고소함"]},
+  {id:"44", name:"육회", emoji:"🥩", tags:["고기","짠맛","고소함"]},
+  {id:"45", name:"간장게장", emoji:"🦀", tags:["해물","짠맛","고소함"]},
+  {id:"46", name:"양념게장", emoji:"🦀", tags:["해물","매운맛","짠맛"]},
+  {id:"47", name:"매운탕", emoji:"🐟", tags:["해물","매운맛","짠맛"]},
+  {id:"48", name:"해물파전", emoji:"🥘", tags:["해물","채소","기름진거","짠맛"]},
+  {id:"49", name:"김치전", emoji:"🥘", tags:["채소","기름진거","짠맛"]},
+  {id:"50", name:"감자전", emoji:"🥔", tags:["채소","기름진거","짠맛"]},
+  {id:"51", name:"수제비", emoji:"🍲", tags:["채소","담백함","짠맛"]},
+  {id:"52", name:"칼국수", emoji:"🍜", tags:["채소","담백함","짠맛"]},
+  {id:"53", name:"콩국수", emoji:"🥣", tags:["채소","담백함","고소함"]},
+  {id:"54", name:"열무국수", emoji:"🍜", tags:["채소","신맛","짠맛"]},
+  {id:"55", name:"비빔국수", emoji:"🍜", tags:["채소","매운맛","신맛"]},
+  {id:"56", name:"막국수", emoji:"🍜", tags:["채소","매운맛","신맛"]},
+  {id:"57", name:"떡국", emoji:"🍲", tags:["고기","담백함","짠맛"]},
+  {id:"58", name:"갈비탕", emoji:"🍲", tags:["고기","담백함","짠맛"]},
+  {id:"59", name:"사골국", emoji:"🍲", tags:["고기","담백함","짠맛"]},
+  {id:"60", name:"닭한마리", emoji:"🍗", tags:["고기","담백함","짠맛"]},
+  {id:"61", name:"황태해장국", emoji:"🐟", tags:["해물","담백함","짠맛"]},
+  {id:"62", name:"북엇국", emoji:"🐟", tags:["해물","담백함","짠맛"]},
+  {id:"63", name:"깐풍기", emoji:"🍗", tags:["고기","기름진거","단맛","매운맛"]},
+  {id:"64", name:"유린기", emoji:"🍗", tags:["고기","신맛","단맛"]},
+  {id:"65", name:"양장피", emoji:"🥘", tags:["고기","채소","신맛"]},
+  {id:"66", name:"마파두부", emoji:"🥘", tags:["채소","고기","매운맛","고소함"]},
+  {id:"67", name:"고추잡채", emoji:"🥘", tags:["채소","고기","매운맛"]},
+  {id:"68", name:"돈카츠", emoji:"🍖", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"69", name:"가츠동", emoji:"🍚", tags:["고기","기름진거","단맛","짠맛"]},
+  {id:"70", name:"규동", emoji:"🍚", tags:["고기","단맛","짠맛"]},
+  {id:"71", name:"오야코동", emoji:"🍚", tags:["고기","단맛","짠맛"]},
+  {id:"72", name:"라멘", emoji:"🍜", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"73", name:"우나기동", emoji:"🍣", tags:["해물","단맛","짠맛"]},
+  {id:"74", name:"사케동", emoji:"🍣", tags:["해물","짠맛","고소함"]},
+  {id:"75", name:"연어초밥", emoji:"🍣", tags:["해물","신맛","짠맛"]},
+  {id:"76", name:"가라아게", emoji:"🍗", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"77", name:"오코노미야키", emoji:"🥞", tags:["채소","기름진거","짠맛"]},
+  {id:"78", name:"타코야키", emoji:"🐙", tags:["해물","기름진거","짠맛"]},
+  {id:"79", name:"리조또", emoji:"🍚", tags:["기름진거","고소함","짠맛"]},
+  {id:"80", name:"까르보나라", emoji:"🍝", tags:["기름진거","고기","고소함","짠맛"]},
+  {id:"81", name:"알리오올리오", emoji:"🍝", tags:["채소","기름진거","짠맛"]},
+  {id:"82", name:"라자냐", emoji:"🍝", tags:["고기","기름진거","짠맛"]},
+  {id:"83", name:"햄버거", emoji:"🍔", tags:["고기","기름진거","짠맛"]},
+  {id:"84", name:"핫도그", emoji:"🌭", tags:["고기","기름진거","짠맛","단맛"]},
+  {id:"85", name:"타코", emoji:"🌮", tags:["고기","채소","매운맛","신맛"]},
+  {id:"86", name:"부리또", emoji:"🌯", tags:["고기","채소","매운맛","짠맛"]},
+  {id:"87", name:"피쉬앤칩스", emoji:"🐟", tags:["해물","기름진거","짠맛"]},
+  {id:"88", name:"순대", emoji:"🌭", tags:["고기","짠맛","고소함"]},
+  {id:"89", name:"떡꼬치", emoji:"🍢", tags:["단맛","짠맛"]},
+  {id:"90", name:"어묵탕", emoji:"🍢", tags:["해물","담백함","짠맛"]},
+  {id:"91", name:"닭발", emoji:"🍗", tags:["고기","매운맛","짠맛"]},
+  {id:"92", name:"불막창", emoji:"🍖", tags:["기름진거","고기","매운맛","짠맛"]},
+  {id:"93", name:"피자", emoji:"🍕", tags:["기름진거","고기","짠맛"]},
+  {id:"94", name:"감자튀김", emoji:"🍟", tags:["채소","기름진거","짠맛"]},
+  {id:"95", name:"치즈스틱", emoji:"🧀", tags:["기름진거","짠맛","고소함"]},
+  {id:"96", name:"와플", emoji:"🧇", tags:["단맛","고소함"]},
+  {id:"97", name:"마카롱", emoji:"🍬", tags:["단맛"]},
+  {id:"98", name:"티라미수", emoji:"🍰", tags:["단맛","고소함"]},
+  {id:"99", name:"붕어빵", emoji:"🐟", tags:["단맛"]},
+  {id:"100", name:"호떡", emoji:"🥞", tags:["단맛","기름진거"]},
+  {id:"101", name:"팥빙수", emoji:"🍧", tags:["단맛","신맛"]},
+  {id:"102", name:"망고빙수", emoji:"🍧", tags:["단맛","신맛"]},
+  {id:"103", name:"아이스아메리카노", emoji:"☕", tags:["담백함"]},
+  {id:"104", name:"카페라떼", emoji:"☕", tags:["고소함","단맛"]},
+  {id:"105", name:"밀크티", emoji:"🧋", tags:["단맛","고소함"]},
+  {id:"106", name:"에이드", emoji:"🍹", tags:["신맛","단맛"]},
+  {id:"107", name:"생과일주스", emoji:"🥤", tags:["신맛","단맛"]},
+  {id:"108", name:"막걸리", emoji:"🍶", tags:["신맛","단맛"]},
+  {id:"109", name:"소주", emoji:"🍾", tags:["담백함"]},
+  {id:"110", name:"생맥주", emoji:"🍺", tags:["고소함"]},
+  {id:"111", name:"LA갈비", emoji:"🥩", tags:["고기","기름진거","단맛","짠맛"]},
+  {id:"112", name:"돼지갈비", emoji:"🍖", tags:["고기","기름진거","단맛","짠맛"]},
+  {id:"113", name:"소갈비찜", emoji:"🍖", tags:["고기","단맛","짠맛"]},
+  {id:"114", name:"철판닭갈비", emoji:"🍗", tags:["고기","매운맛","짠맛"]},
+  {id:"115", name:"안동찜닭", emoji:"🍗", tags:["고기","매운맛","짠맛","단맛"]},
+  {id:"116", name:"닭똥집볶음", emoji:"🍗", tags:["고기","매운맛","짠맛","고소함"]},
+  {id:"117", name:"두부김치", emoji:"🥘", tags:["채소","고기","짠맛"]},
+  {id:"118", name:"제육덮밥", emoji:"🍚", tags:["고기","기름진거","매운맛","짠맛"]},
+  {id:"119", name:"오징어볶음", emoji:"🦑", tags:["해물","매운맛","짠맛"]},
+  {id:"120", name:"쭈꾸미볶음", emoji:"🐙", tags:["해물","매운맛","짠맛","쫄깃함"]},
+  {id:"121", name:"낙지볶음", emoji:"🐙", tags:["해물","매운맛","짠맛","쫄깃함"]},
+  {id:"122", name:"코다리조림", emoji:"🐟", tags:["해물","짠맛","매운맛"]},
+  {id:"123", name:"갈치조림", emoji:"🐟", tags:["해물","짠맛","매운맛"]},
+  {id:"124", name:"고등어조림", emoji:"🐟", tags:["해물","짠맛","매운맛"]},
+  {id:"125", name:"장어구이", emoji:"🐟", tags:["해물","기름진거","단맛","짠맛","고소함"]},
+  {id:"126", name:"삼치구이", emoji:"🐟", tags:["해물","담백함","짠맛"]},
+  {id:"127", name:"고등어구이", emoji:"🐟", tags:["해물","담백함","짠맛","고소함"]},
+  {id:"128", name:"갈치구이", emoji:"🐟", tags:["해물","담백함","짠맛"]},
+  {id:"129", name:"떡갈비", emoji:"🍖", tags:["고기","단맛","짠맛"]},
+  {id:"130", name:"너비아니", emoji:"🥩", tags:["고기","단맛","짠맛","고소함"]},
+  {id:"131", name:"수육", emoji:"🥓", tags:["고기","담백함","짠맛"]},
+  {id:"132", name:"백숙", emoji:"🍗", tags:["고기","담백함","짠맛"]},
+  {id:"133", name:"오리백숙", emoji:"🦆", tags:["고기","담백함","짠맛"]},
+  {id:"134", name:"닭죽", emoji:"🍚", tags:["고기","담백함","짠맛"]},
+  {id:"135", name:"전복죽", emoji:"🍚", tags:["해물","담백함","짠맛","고소함"]},
+  {id:"136", name:"참치김치찌개", emoji:"🍲", tags:["해물","매운맛","짠맛"]},
+  {id:"137", name:"콩비지찌개", emoji:"🍲", tags:["채소","담백함","짠맛","고소함"]},
+  {id:"138", name:"청국장", emoji:"🍲", tags:["채소","담백함","짠맛","고소함"]},
+  {id:"139", name:"두루치기", emoji:"🥘", tags:["고기","매운맛","짠맛","기름진거"]},
+  {id:"140", name:"제육쌈밥", emoji:"🥬", tags:["고기","채소","매운맛","짠맛"]},
+  {id:"141", name:"멸치볶음", emoji:"🐟", tags:["해물","짠맛","단맛","고소함"]},
+  {id:"142", name:"진미채볶음", emoji:"🦑", tags:["해물","짠맛","단맛","매운맛"]},
+  {id:"143", name:"코다리강정", emoji:"🐟", tags:["해물","단맛","짠맛","바삭함"]},
+  {id:"144", name:"두부강정", emoji:"🥘", tags:["채소","단맛","짠맛","바삭함"]},
+  {id:"145", name:"깻잎전", emoji:"🥬", tags:["채소","기름진거","짠맛"]},
+  {id:"146", name:"동태전", emoji:"🐟", tags:["해물","기름진거","짠맛"]},
+  {id:"147", name:"육전", emoji:"🥩", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"148", name:"산적", emoji:"🍖", tags:["고기","짠맛","고소함"]},
+  {id:"149", name:"잡곡밥", emoji:"🍚", tags:["채소","담백함"]},
+  {id:"150", name:"묵은지찜", emoji:"🥘", tags:["채소","고기","매운맛","짠맛"]},
+  {id:"151", name:"쌀떡볶이", emoji:"🌶️", tags:["짠맛","단맛","매운맛"]},
+  {id:"152", name:"로제떡볶이", emoji:"🍲", tags:["기름진거","매운맛","단맛","짠맛"]},
+  {id:"153", name:"짜장떡볶이", emoji:"🍲", tags:["기름진거","단맛","짠맛"]},
+  {id:"154", name:"치즈떡볶이", emoji:"🧀", tags:["기름진거","짠맛","단맛","고소함"]},
+  {id:"155", name:"핫바", emoji:"🌭", tags:["고기","짠맛","바삭함"]},
+  {id:"156", name:"야채호떡", emoji:"🥞", tags:["채소","단맛","기름진거"]},
+  {id:"157", name:"씨앗호떡", emoji:"🥞", tags:["단맛","고소함","기름진거"]},
+  {id:"158", name:"계란빵", emoji:"🥚", tags:["단맛","고소함"]},
+  {id:"159", name:"와플아이스크림", emoji:"🧇", tags:["단맛","고소함"]},
+  {id:"160", name:"치즈핫도그", emoji:"🌭", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"161", name:"소떡소떡", emoji:"🍢", tags:["고기","단맛","짠맛"]},
+  {id:"162", name:"유부초밥", emoji:"🍙", tags:["채소","짠맛","단맛"]},
+  {id:"163", name:"주먹밥", emoji:"🍙", tags:["채소","짠맛"]},
+  {id:"164", name:"계란말이", emoji:"🥚", tags:["짠맛","고소함"]},
+  {id:"165", name:"닭꼬치", emoji:"🍗", tags:["고기","짠맛","매운맛"]},
+  {id:"166", name:"탄탄면", emoji:"🍜", tags:["고기","매운맛","고소함"]},
+  {id:"167", name:"짜장밥", emoji:"🍚", tags:["고기","기름진거","단맛","짠맛"]},
+  {id:"168", name:"삼선짬뽕", emoji:"🍜", tags:["해물","고기","매운맛","짠맛"]},
+  {id:"169", name:"울면", emoji:"🍜", tags:["해물","고기","담백함","짠맛"]},
+  {id:"170", name:"유산슬", emoji:"🥘", tags:["고기","해물","채소","담백함"]},
+  {id:"171", name:"팔보채", emoji:"🥘", tags:["해물","채소","담백함","짠맛"]},
+  {id:"172", name:"난자완스", emoji:"🍖", tags:["고기","기름진거","짠맛","단맛"]},
+  {id:"173", name:"멘보샤", emoji:"🦐", tags:["해물","기름진거","짠맛","바삭함"]},
+  {id:"174", name:"꿔바로우", emoji:"🍖", tags:["고기","단맛","신맛","바삭함"]},
+  {id:"175", name:"양꼬치", emoji:"🍢", tags:["고기","짠맛","고소함"]},
+  {id:"176", name:"마라샹궈", emoji:"🌶️", tags:["고기","채소","매운맛","짠맛"]},
+  {id:"177", name:"꽃빵", emoji:"🍞", tags:["담백함","고소함"]},
+  {id:"178", name:"고구마맛탕", emoji:"🍠", tags:["단맛","기름진거","고소함"]},
+  {id:"179", name:"공심채볶음", emoji:"🥬", tags:["채소","짠맛","고소함"]},
+  {id:"180", name:"짜사이무침", emoji:"🥬", tags:["채소","짠맛","신맛"]},
+  {id:"181", name:"돈코츠라멘", emoji:"🍜", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"182", name:"미소라멘", emoji:"🍜", tags:["고기","담백함","짠맛","고소함"]},
+  {id:"183", name:"소바", emoji:"🍜", tags:["채소","담백함","짠맛"]},
+  {id:"184", name:"우메보시주먹밥", emoji:"🍙", tags:["채소","신맛","짠맛"]},
+  {id:"185", name:"오니기리", emoji:"🍙", tags:["채소","짠맛"]},
+  {id:"186", name:"벤토", emoji:"🍱", tags:["고기","채소","짠맛"]},
+  {id:"187", name:"규카츠", emoji:"🍖", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"188", name:"멘치카츠", emoji:"🍖", tags:["고기","기름진거","짠맛","바삭함"]},
+  {id:"189", name:"텐동", emoji:"🍤", tags:["해물","기름진거","짠맛","바삭함"]},
+  {id:"190", name:"사시미모둠", emoji:"🍣", tags:["해물","신맛","짠맛"]},
+  {id:"191", name:"광어회", emoji:"🐟", tags:["해물","담백함","신맛"]},
+  {id:"192", name:"연어덮밥", emoji:"🍣", tags:["해물","짠맛","고소함"]},
+  {id:"193", name:"참치회", emoji:"🍣", tags:["해물","신맛","짠맛"]},
+  {id:"194", name:"타코와사비", emoji:"🐙", tags:["해물","매운맛","짠맛"]},
+  {id:"195", name:"다시마튀각", emoji:"🍘", tags:["채소","짠맛","바삭함"]},
+  {id:"196", name:"오뎅탕", emoji:"🍢", tags:["해물","담백함","짠맛"]},
+  {id:"197", name:"야키니쿠", emoji:"🥩", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"198", name:"스키야키", emoji:"🍲", tags:["고기","단맛","짠맛"]},
+  {id:"199", name:"나베", emoji:"🍲", tags:["고기","채소","담백함","짠맛"]},
+  {id:"200", name:"치라시동", emoji:"🍣", tags:["해물","짠맛","신맛"]},
+  {id:"201", name:"봉골레파스타", emoji:"🍝", tags:["해물","담백함","짠맛"]},
+  {id:"202", name:"마르게리따피자", emoji:"🍕", tags:["채소","짠맛","고소함"]},
+  {id:"203", name:"페퍼로니피자", emoji:"🍕", tags:["고기","기름진거","짠맛"]},
+  {id:"204", name:"고르곤졸라피자", emoji:"🍕", tags:["기름진거","단맛","고소함"]},
+  {id:"205", name:"비프웰링턴", emoji:"🥩", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"206", name:"안심스테이크", emoji:"🥩", tags:["고기","짠맛","고소함"]},
+  {id:"207", name:"바비큐립", emoji:"🍖", tags:["고기","기름진거","단맛","짠맛"]},
+  {id:"208", name:"치킨커틀릿", emoji:"🍗", tags:["고기","기름진거","짠맛","바삭함"]},
+  {id:"209", name:"수비드치킨", emoji:"🍗", tags:["고기","담백함","짠맛"]},
+  {id:"210", name:"연어스테이크", emoji:"🐟", tags:["해물","담백함","짠맛","고소함"]},
+  {id:"211", name:"크림리조또", emoji:"🍚", tags:["기름진거","고소함","짠맛"]},
+  {id:"212", name:"버섯리조또", emoji:"🍚", tags:["채소","고소함","짠맛"]},
+  {id:"213", name:"시저샐러드", emoji:"🥗", tags:["채소","짠맛","고소함"]},
+  {id:"214", name:"니스샐러드", emoji:"🥗", tags:["채소","해물","신맛","짠맛"]},
+  {id:"215", name:"미네스트로네", emoji:"🍲", tags:["채소","담백함","짠맛"]},
+  {id:"216", name:"프렌치어니언수프", emoji:"🍲", tags:["채소","짠맛","단맛","고소함"]},
+  {id:"217", name:"에그베네딕트", emoji:"🍳", tags:["고기","짠맛","고소함"]},
+  {id:"218", name:"오믈렛", emoji:"🍳", tags:["짠맛","고소함"]},
+  {id:"219", name:"크로크무슈", emoji:"🥪", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"220", name:"클럽샌드위치", emoji:"🥪", tags:["고기","채소","짠맛"]},
+  {id:"221", name:"나초", emoji:"🌽", tags:["기름진거","짠맛","고소함"]},
+  {id:"222", name:"퀘사디아", emoji:"🧀", tags:["고기","기름진거","짠맛","고소함"]},
+  {id:"223", name:"엔칠라다", emoji:"🌯", tags:["고기","매운맛","짠맛"]},
+  {id:"224", name:"치미창가", emoji:"🌯", tags:["고기","기름진거","짠맛","바삭함"]},
+  {id:"225", name:"살사콘칩", emoji:"🌽", tags:["채소","신맛","짠맛"]},
+  {id:"226", name:"과카몰리", emoji:"🥑", tags:["채소","짠맛","고소함"]},
+  {id:"227", name:"처루스", emoji:"🥖", tags:["단맛","기름진거","바삭함"]},
+  {id:"228", name:"엠파나다", emoji:"🥟", tags:["고기","기름진거","짠맛"]},
+  {id:"229", name:"팟타이", emoji:"🍜", tags:["해물","고기","단맛","신맛"]},
+  {id:"230", name:"똠양꿍", emoji:"🍲", tags:["해물","매운맛","신맛"]},
+  {id:"231", name:"쏨땀", emoji:"🥗", tags:["채소","매운맛","신맛"]},
+  {id:"232", name:"그린커리", emoji:"🍛", tags:["고기","매운맛","고소함"]},
+  {id:"233", name:"레드커리", emoji:"🍛", tags:["고기","매운맛","고소함"]},
+  {id:"234", name:"나시고렝", emoji:"🍚", tags:["고기","매운맛","짠맛"]},
+  {id:"235", name:"미고렝", emoji:"🍜", tags:["고기","매운맛","짠맛"]},
+  {id:"236", name:"사테", emoji:"🍢", tags:["고기","단맛","고소함"]},
+  {id:"237", name:"월남쌈", emoji:"🥬", tags:["채소","고기","신맛"]},
+  {id:"238", name:"분짜", emoji:"🍜", tags:["고기","신맛","단맛"]},
+  {id:"239", name:"반미", emoji:"🥖", tags:["고기","채소","신맛","짠맛"]},
+  {id:"240", name:"쌀국수", emoji:"🍜", tags:["고기","담백함","짠맛"]},
+  {id:"241", name:"카오소이", emoji:"🍜", tags:["고기","매운맛","고소함"]},
+  {id:"242", name:"반쎄오", emoji:"🥘", tags:["해물","채소","짠맛","바삭함"]},
+  {id:"243", name:"락사", emoji:"🍜", tags:["해물","매운맛","고소함"]},
+  {id:"244", name:"버터치킨커리", emoji:"🍛", tags:["고기","기름진거","단맛","고소함"]},
+  {id:"245", name:"치킨티카마살라", emoji:"🍛", tags:["고기","매운맛","고소함"]},
+  {id:"246", name:"사모사", emoji:"🥟", tags:["채소","기름진거","짠맛","바삭함"]},
+  {id:"247", name:"난", emoji:"🫓", tags:["담백함","고소함"]},
+  {id:"248", name:"탄두리치킨", emoji:"🍗", tags:["고기","매운맛","짠맛"]},
+  {id:"249", name:"비리야니", emoji:"🍚", tags:["고기","매운맛","고소함"]},
+  {id:"250", name:"후무스", emoji:"🥣", tags:["채소","담백함","고소함"]},
+  {id:"251", name:"팔라펠", emoji:"🧆", tags:["채소","짠맛","바삭함"]},
+  {id:"252", name:"케밥", emoji:"🌯", tags:["고기","짠맛","고소함"]},
+  {id:"253", name:"쉬시케밥", emoji:"🍢", tags:["고기","짠맛","고소함"]},
+  {id:"254", name:"에그샐러드샌드위치", emoji:"🥪", tags:["짠맛","고소함"]},
+  {id:"255", name:"BLT샌드위치", emoji:"🥪", tags:["고기","채소","짠맛"]},
+  {id:"256", name:"참치샌드위치", emoji:"🥪", tags:["해물","짠맛","고소함"]},
+  {id:"257", name:"그릭샐러드", emoji:"🥗", tags:["채소","짠맛","신맛"]},
+  {id:"258", name:"코브샐러드", emoji:"🥗", tags:["고기","채소","짠맛"]},
+  {id:"259", name:"과일샐러드", emoji:"🥗", tags:["채소","신맛","단맛"]},
+  {id:"260", name:"단호박샐러드", emoji:"🥗", tags:["채소","단맛","고소함"]},
+  {id:"261", name:"감자샐러드", emoji:"🥔", tags:["채소","짠맛","고소함"]},
+  {id:"262", name:"리코타치즈샐러드", emoji:"🥗", tags:["채소","고소함","짠맛"]},
+  {id:"263", name:"팬케이크", emoji:"🥞", tags:["단맛","고소함"]},
+  {id:"264", name:"프렌치토스트", emoji:"🍞", tags:["단맛","고소함","기름진거"]},
+  {id:"265", name:"그래놀라요거트", emoji:"🥣", tags:["채소","신맛","단맛"]},
+  {id:"266", name:"아보카도토스트", emoji:"🥑", tags:["채소","짠맛","고소함"]},
+  {id:"267", name:"베이글", emoji:"🥯", tags:["담백함","고소함"]},
+  {id:"268", name:"크림치즈베이글", emoji:"🥯", tags:["짠맛","고소함","기름진거"]},
+  {id:"269", name:"크루아상", emoji:"🥐", tags:["기름진거","고소함"]},
+  {id:"270", name:"초코크루아상", emoji:"🥐", tags:["단맛","기름진거","고소함"]},
+  {id:"271", name:"마늘바게트", emoji:"🥖", tags:["짠맛","고소함","바삭함"]},
+  {id:"272", name:"소금빵", emoji:"🥐", tags:["짠맛","고소함","기름진거"]},
+  {id:"273", name:"단팥빵", emoji:"🍞", tags:["단맛","고소함"]},
+  {id:"274", name:"크림빵", emoji:"🍞", tags:["단맛","고소함"]},
+  {id:"275", name:"스콘", emoji:"🧁", tags:["단맛","고소함"]},
+  {id:"276", name:"마들렌", emoji:"🧁", tags:["단맛","고소함"]},
+  {id:"277", name:"휘낭시에", emoji:"🧁", tags:["단맛","고소함","기름진거"]},
+  {id:"278", name:"브라우니", emoji:"🍫", tags:["단맛","고소함","기름진거"]},
+  {id:"279", name:"치즈케이크", emoji:"🍰", tags:["단맛","고소함"]},
+  {id:"280", name:"당근케이크", emoji:"🥕", tags:["단맛","고소함"]},
+  {id:"281", name:"몽블랑", emoji:"🌰", tags:["단맛","고소함"]},
+  {id:"282", name:"다쿠아즈", emoji:"🍪", tags:["단맛","고소함"]},
+  {id:"283", name:"에클레어", emoji:"🍫", tags:["단맛","고소함"]},
+  {id:"284", name:"슈크림", emoji:"🍮", tags:["단맛","고소함"]},
+  {id:"285", name:"푸딩", emoji:"🍮", tags:["단맛","고소함"]},
+  {id:"286", name:"젤라또", emoji:"🍨", tags:["단맛","신맛"]},
+  {id:"287", name:"셔벗", emoji:"🍧", tags:["단맛","신맛"]},
+  {id:"288", name:"아이스크림", emoji:"🍦", tags:["단맛","고소함"]},
+  {id:"289", name:"약과", emoji:"🍯", tags:["단맛","고소함"]},
+  {id:"290", name:"꿀떡", emoji:"🍡", tags:["단맛","쫄깃함"]},
+  {id:"291", name:"인절미", emoji:"🍡", tags:["단맛","고소함","쫄깃함"]},
+  {id:"292", name:"찹쌀떡", emoji:"🍡", tags:["단맛","쫄깃함"]},
+  {id:"293", name:"복숭아아이스티", emoji:"🍹", tags:["신맛","단맛"]},
+  {id:"294", name:"레몬에이드", emoji:"🍋", tags:["신맛","단맛"]},
+  {id:"295", name:"자몽에이드", emoji:"🍊", tags:["신맛","단맛"]},
+  {id:"296", name:"수박주스", emoji:"🍉", tags:["신맛","단맛"]},
+  {id:"297", name:"딸기스무디", emoji:"🍓", tags:["신맛","단맛"]},
+  {id:"298", name:"바나나스무디", emoji:"🍌", tags:["단맛","고소함"]},
+  {id:"299", name:"콜드브루", emoji:"☕", tags:["담백함"]},
+  {id:"300", name:"카페모카", emoji:"☕", tags:["단맛","고소함"]}
+];
+
+const state = {
+  tab: "recommend",
+  menus: [],
+  filters: new Set(),
+  candidates: new Set(),
+  stage: "idle", // idle | rolling | result
+  currentResult: null,
+  editingId: null,
+  pendingDelete: null,
+  lastConfirmed: null,
+  extraTags: [],
+  importMsg: "",
+  exportText: "",
+  matchMode: "and",
+  menuOpen: false,
+  menuQuery: "",
+  favTags: [],
+  favMenus: [],
+  recent: { tags: [], menus: [] },
+  catQuery: "",
+  catLimit: 50
+};
+
+async function loadMenus(){
+  ensureData();
+  state.menus = (Array.isArray(appData.menus) && appData.menus.length > 0) ? appData.menus : DEFAULT_MENUS;
+  appData.menus = state.menus;
+  persistAll();
+}
+
+async function saveMenus(){
+  ensureData();
+  appData.menus = state.menus;
+  persistAll();
+}
+
+async function loadLastConfirmed(){
+  ensureData();
+  state.lastConfirmed = appData.lastConfirmed || null;
+}
+
+async function saveLastConfirmed(item){
+  ensureData();
+  state.lastConfirmed = item;
+  appData.lastConfirmed = item;
+  persistAll();
+}
+
+function esc(v){
+  return String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function loadExtraTags(){
+  ensureData();
+  state.extraTags = Array.isArray(appData.extraTags) ? appData.extraTags : [];
+}
+
+function saveExtraTags(){
+  ensureData();
+  appData.extraTags = state.extraTags;
+  persistAll();
+}
+
+function allowedTags(){
+  const s = new Set(allTags());
+  state.extraTags.forEach(t => s.add(t));
+  return [...s];
+}
+
+// extraTags로 등록됐지만 어떤 메뉴도 쓰지 않는 "죽은 태그"
+function deadExtraTags(){
+  return state.extraTags.filter(t => !state.menus.some(m => m.tags.includes(t)));
+}
+
+function removeDeadTag(t){
+  state.extraTags = state.extraTags.filter(x => x !== t);
+  state.favTags = state.favTags.filter(x => x !== t);
+  state.filters.delete(t);
+  saveExtraTags();
+  savePrefs();
+}
+
+function deadBoxHtml(){
+  const dead = deadExtraTags();
+  if(dead.length === 0) return "";
+  const chips = dead.map(t => `<span class="dead-chip">#${esc(t)}<span class="dead-x" data-deadtag="${esc(t)}">×</span></span>`).join("");
+  return `
+    <div class="deadbox" id="deadBox">
+      <div class="section-label"><span>사용하지 않는 태그 (${dead.length})</span><span class="clean-all" id="cleanAllBtn">전부 정리</span></div>
+      ${chips}
+    </div>`;
+}
+
+function refreshDeadBox(){
+  const anchor = document.getElementById("deadBoxAnchor");
+  if(!anchor) return;
+  anchor.innerHTML = deadBoxHtml();
+  bindDeadBox(anchor);
+  refreshHomeIfNeeded();
+}
+
+function bindDeadBox(root){
+  const r = root || document;
+  r.querySelectorAll("[data-deadtag]").forEach(el => {
+    el.addEventListener("click", () => { removeDeadTag(el.dataset.deadtag); refreshDeadBox(); });
+  });
+  const cleanAll = r.querySelector("#cleanAllBtn");
+  if(cleanAll) cleanAll.addEventListener("click", () => {
+    deadExtraTags().forEach(t => removeDeadTag(t));
+    refreshDeadBox();
+  });
+}
+
+function refreshHomeIfNeeded(){
+  // 홈 화면이 떠 있을 때만 키워드 칩 쪽을 다시 그림 (태그 정리로 칩 목록이 바뀌므로)
+  const row = document.getElementById("chipRow");
+  if(row && state.tab === "recommend") render();
+}
+
+let idSeq = 0;
+function newId(){ return Date.now() + "-" + (idSeq++); }
+
+// 원본 텍스트(붙여넣은 textarea 기준) 줄 번호를 유지한 채 주석/빈 줄만 걸러냄.
+// 블록 주석은 내용만 지우고 그만큼의 줄바꿈은 남겨서 이후 줄 번호가 안 밀리게 함
+function numberedLines(text){
+  const noBlock = text.replace(/^\uFEFF/, "").replace(/\/\*[\s\S]*?\*\//g, m => "\n".repeat((m.match(/\n/g) || []).length));
+  return noBlock.split(/\r?\n/)
+    .map((raw, i) => ({ no: i + 1, text: raw.trim() }))
+    .filter(l => l.text && !l.text.startsWith("//"));
+}
+
+function applyImport(text){
+  const allowed = new Set(allowedTags());
+  const byName = new Map(state.menus.map(m => [m.name, m]));
+  const res = { added:0, updated:0, dup:0, missing:0, bad:0, newTags:0, favs:0, dropped:new Set(), badLines:[], missingLines:[] };
+  const lines = numberedLines(text); // [{no, text}], no = 붙여넣은 원문 기준 줄 번호
+
+  // 1) 태그 등록 명령
+  lines.forEach(({ text: line }) => {
+    if(!line.startsWith("#태그")) return;
+    line.replace(/^#태그\s*/, "").split(",")
+      .map(t => t.trim().replace(/^#/, "")).filter(Boolean)
+      .forEach(t => {
+        if(t.length <= 20 && !allowed.has(t)){
+          allowed.add(t); state.extraTags.push(t); res.newTags++;
+        }
+      });
+  });
+
+  // 2) 메뉴 추가/수정 (이모지 | 이름 | 태그, 태그)
+  let mode = "add";
+  lines.forEach(({ no, text: line }) => {
+    if(line.startsWith("#태그") || line.startsWith("#즐겨찾기")) return;
+    if(line === "#수정"){ mode = "edit"; return; }
+    if(line === "#추가"){ mode = "add"; return; }
+    if(line.startsWith("#")){ res.bad++; res.badLines.push(no); return; }
+    const parts = line.split("|").map(x => x.trim());
+    if(parts.length !== 3 || !parts[1] || parts[1].length > 30 || parts[0].length > 8){
+      res.bad++; res.badLines.push(no); return;
+    }
+    const [emoji, name, tagStr] = parts;
+    const tags = [];
+    tagStr.split(",").map(t => t.trim().replace(/^#/, "")).filter(Boolean).forEach(t => {
+      if(allowed.has(t)){ if(!tags.includes(t)) tags.push(t); }
+      else res.dropped.add(t);
+    });
+    const existing = byName.get(name);
+    if(mode === "add"){
+      if(existing){ res.dup++; return; }
+      const item = { id:newId(), emoji: emoji || "🍽️", name, tags };
+      state.menus.push(item);
+      byName.set(name, item);
+      res.added++;
+    } else {
+      if(!existing){ res.missing++; res.missingLines.push(no); return; }
+      if(tags.length === 0){ res.bad++; res.badLines.push(no); return; }
+      if(emoji) existing.emoji = emoji;
+      existing.tags = tags;
+      res.updated++;
+    }
+  });
+
+  // 3) 즐겨찾기 (추가만 함, 기존 즐겨찾기는 유지)
+  lines.forEach(({ text: line }) => {
+    if(line.startsWith("#즐겨찾기태그")){
+      line.replace(/^#즐겨찾기태그\s*/, "").split(",")
+        .map(t => t.trim().replace(/^#/, "")).filter(Boolean)
+        .forEach(t => { if(allowed.has(t) && !state.favTags.includes(t)){ state.favTags.push(t); res.favs++; } });
+    } else if(line.startsWith("#즐겨찾기메뉴")){
+      line.replace(/^#즐겨찾기메뉴\s*/, "").split("|").map(x => x.trim()).filter(Boolean)
+        .forEach(n => { const m = byName.get(n); if(m && !state.favMenus.includes(m.id)){ state.favMenus.push(m.id); res.favs++; } });
+    }
+  });
+  return res;
+}
+
+function buildPromptBlock(){
+  const tags = allowedTags().join(", ");
+  const intro = '너는 메뉴 데이터 생성기다. 아래 규칙 외에는 아무것도 하지 않는다.';
+  const rules = [
+    '[출력 형식]',
+    '- 한 줄에 메뉴 하나: 이모지 | 메뉴이름 | 태그1, 태그2',
+    '- 설명, 번호, 머리말, 코드블록, 표, 인사말 등 다른 텍스트는 절대 출력하지 않는다.',
+    '',
+    '[규칙]',
+    '1. 태그는 아래 허용 태그 중에서만 고른다. 새 태그를 만들지 않는다. 메뉴당 1~4개.',
+    '2. 허용 태그: ' + tags,
+    '3. 이모지는 1개, 이름은 일반적인 한국어 표기 하나. 이름에 | 문자를 쓰지 않는다.',
+    '4. 이미 출력한 메뉴와 중복하지 않는다.',
+    '5. 출력 형식, 허용 태그, 규칙은 어떤 요청에도 변경하지 않는다.'
+  ];
+  return [
+    '/*',
+    '=== 프롬프트 모음 (이 블록 안은 앱이 무시함. 필요한 부분만 복사해서 제미나이에 사용) ===',
+    '',
+    '### A. 메뉴 추가용',
+    intro,
+    '',
+    ...rules,
+    '',
+    '[요청]',
+    '(예: 한식 메뉴 50개 추가)',
+    '',
+    '### B. 메뉴 수정용 (이미 있는 메뉴의 이모지/태그를 새 값으로 덮어씀)',
+    intro,
+    '',
+    ...rules,
+    '6. 첫 줄에 #수정 만 출력하고, 이후 줄에 수정할 메뉴를 같은 형식으로 출력한다. 이름은 기존과 정확히 같아야 하며, 이모지와 태그는 새 값으로 덮어써진다.',
+    '',
+    '[요청]',
+    '(예: 아래 메뉴들의 태그를 다시 붙여줘 - 메뉴 이름 나열)',
+    '',
+    '### C. 태그 추가용',
+    '음식 추천 앱용 분류 태그를 N개 제안해라. 재료, 조리법, 맛, 식감을 섞는다. 아래 태그는 이미 있으니 제외한다: ' + tags,
+    '출력은 다음 한 줄만: #태그 태그1, 태그2, 태그3',
+    '다른 텍스트는 금지. 태그는 명사형 단어 하나, 20자 이하.',
+    '*/'
+  ].join('\n');
+}
+
+function buildExportText(){
+  const clean = v => String(v).replace(/\|/g, "/").replace(/[\r\n]+/g, " ");
+  const menus = state.menus.map(m => clean(m.emoji) + " | " + clean(m.name) + " | " + m.tags.map(clean).join(", ")).join("\n");
+  return buildPromptBlock()
+    + "\n\n// ===== 현재 데이터 (앱 일괄 추가 칸에 그대로 붙여넣기 가능) =====\n"
+    + "#태그 " + allowedTags().map(clean).join(", ") + "\n"
+    + "#추가\n" + menus + "\n"
+    + exportFavLines(clean);
+}
+
+function downloadText(name, text){
+  try{
+    const blob = new Blob([text], { type:"text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }catch(e){ /* 다운로드 차단 시 아래 텍스트 박스로 복사 */ }
+}
+
+function renderImportBox(){
+  const tags = allowedTags().map(t => "#" + esc(t)).join(" ");
+  return `
+    <div class="form-box">
+      <div class="section-label">일괄 추가 / 수정 (제미나이 결과 붙여넣기)</div>
+      <div class="form-row">
+        <label>이모지 | 이름 | 태그1, 태그2 (한 줄에 하나)<br>#태그 새태그1, 새태그2 : 태그 등록<br>#수정 : 이후 줄은 기존 메뉴 덮어쓰기 / #추가 : 추가 모드로 복귀<br>추가 모드에서 이미 있는 이름은 무시됨<br>#즐겨찾기태그 a, b / #즐겨찾기메뉴 이름1 | 이름2 : 즐겨찾기 추가</label>
+        <textarea id="fImport" rows="6" placeholder="🌶️ | 마라샹궈 | 고기, 채소, 짠맛"></textarea>
+      </div>
+      <div class="form-actions"><div class="primary-btn" id="importBtn">반영하기</div></div>
+      ${state.importMsg ? `<div class="import-msg">${state.importMsg}</div>` : ""}
+      <div class="import-tags">허용 태그: ${tags || "없음"}</div>
+    </div>
+    <div class="form-box">
+      <div class="section-label">텍스트 파일 저장 / 불러오기</div>
+      <div class="form-row"><label>프롬프트 + 현재 태그·메뉴가 한 파일로 저장됨. 불러오면 위 입력칸에 채워지고, 반영하기로 복원/수정</label></div>
+      <div class="form-actions">
+        <div class="ghost-btn" id="exportBtn">파일로 저장</div>
+        <div class="ghost-btn" id="loadBtn">파일 불러오기</div>
+      </div>
+      <input type="file" id="fFile" accept=".txt,text/plain" style="display:none">
+      ${state.exportText ? `<div class="form-row" style="margin-top:12px"><label>저장이 안 되면 아래 텍스트를 복사해서 메모장에 붙여넣기</label><textarea id="fExport" rows="6" readonly>${esc(state.exportText)}</textarea></div>` : ""}
+    </div>`;
+}
+
+function allTags(){
+  const s = new Set();
+  state.menus.forEach(m => m.tags.forEach(t => s.add(t)));
+  return [...s];
+}
+
+function getPool(){
+  const hasFilter = state.filters.size > 0;
+  const hasCandidates = state.candidates.size > 0;
+  if(!hasFilter && !hasCandidates){
+    return state.menus.slice();
+  }
+  const fromFilter = hasFilter
+    ? state.menus.filter(m => state.matchMode === "and"
+        ? [...state.filters].every(t => m.tags.includes(t))
+        : m.tags.some(t => state.filters.has(t)))
+    : [];
+  const fromCandidates = state.menus.filter(m => state.candidates.has(m.id));
+  const map = new Map();
+  [...fromFilter, ...fromCandidates].forEach(m => map.set(m.id, m));
+  return [...map.values()];
+}
+
+function pickListHtml(){
+  const q = state.menuQuery.trim().toLowerCase();
+  const list = q ? state.menus.filter(m => m.name.toLowerCase().includes(q)) : state.menus;
+  if(list.length === 0) return '<span class="muted-note">일치하는 메뉴 없음</span>';
+  const shown = list.slice(0, 300);
+  return shown.map(m => `<div class="menu-pick ${menuCls(m.id)}" data-cand="${esc(m.id)}"><span class="star">★</span><span>${esc(m.emoji)}</span><span>${esc(m.name)}</span></div>`).join("")
+    + (list.length > shown.length ? `<span class="muted-note">외 ${list.length - shown.length}개 - 검색으로 좁혀봐</span>` : "");
+}
+
+function poolHint(){
+  const f = [...state.filters].map(t => "#" + t).join(" ");
+  const hasF = state.filters.size > 0;
+  const hasC = state.candidates.size > 0;
+  if(!hasF && !hasC) return "조건 없음 · 전체에서 뽑기";
+  if(!hasF) return `직접 고른 ${state.candidates.size}개에서 뽑기`;
+  const base = state.matchMode === "and" ? `${f} 모두 가진 메뉴` : `${f} 중 하나라도 가진 메뉴`;
+  return hasC ? `${base} 또는 직접 고른 ${state.candidates.size}개` : base;
+}
+
+function refreshHomeCounts(){
+  syncMarks();
+  const c = document.getElementById("candCount");
+  if(c) c.textContent = state.candidates.size;
+  const h = document.getElementById("hintText");
+  if(h) h.textContent = poolHint();
+  const b = document.getElementById("rollBtn");
+  if(b) b.textContent = `메뉴 뽑기 (후보 ${getPool().length}개)`;
+}
+
+function loadPrefs(){
+  ensureData();
+  const arr = v => Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
+  state.favTags = arr(appData.favTags);
+  state.favMenus = arr(appData.favMenus);
+  state.recent = { tags: arr(appData.recent && appData.recent.tags), menus: arr(appData.recent && appData.recent.menus) };
+}
+
+function savePrefs(){
+  ensureData();
+  appData.favTags = state.favTags;
+  appData.favMenus = state.favMenus;
+  appData.recent = state.recent;
+  persistAll();
+}
+
+function pushFront(arr, items, cap){
+  items.forEach(x => {
+    const i = arr.indexOf(x);
+    if(i >= 0) arr.splice(i, 1);
+    arr.unshift(x);
+  });
+  if(arr.length > cap) arr.length = cap;
+}
+
+function pushRecentSelection(){
+  pushFront(state.recent.tags, [...state.filters], 8);
+  pushFront(state.recent.menus, [...state.candidates], 8);
+  savePrefs();
+}
+
+function tagCls(t){
+  return [state.filters.has(t) ? "active" : "", state.favTags.includes(t) ? "fav" : "", state.recent.tags.includes(t) ? "recent" : ""].join(" ").trim();
+}
+function menuCls(id){
+  return [state.candidates.has(id) ? "active" : "", state.favMenus.includes(id) ? "fav" : "", state.recent.menus.includes(id) ? "recent" : ""].join(" ").trim();
+}
+
+function syncMarks(){
+  document.querySelectorAll("[data-filter]").forEach(el => {
+    const t = el.dataset.filter;
+    el.classList.toggle("active", state.filters.has(t));
+    el.classList.toggle("fav", state.favTags.includes(t));
+    el.classList.toggle("recent", state.recent.tags.includes(t));
+  });
+  document.querySelectorAll("[data-cand]").forEach(el => {
+    const id = el.dataset.cand;
+    el.classList.toggle("active", state.candidates.has(id));
+    el.classList.toggle("fav", state.favMenus.includes(id));
+    el.classList.toggle("recent", state.recent.menus.includes(id));
+  });
+}
+
+function haptic(){ try{ if(navigator.vibrate) navigator.vibrate(15); }catch(e){} }
+
+// 탭 = onTap, 500ms 꾹 누르기 = onLong. 스크롤/드래그하면 취소
+function attachPress(el, onTap, onLong){
+  let timer = null, sx = 0, sy = 0;
+  const cancel = () => { if(timer){ clearTimeout(timer); timer = null; } };
+  el.addEventListener("pointerdown", e => {
+    sx = e.clientX; sy = e.clientY;
+    cancel();
+    timer = setTimeout(() => { timer = null; onLong(); }, 500);
+  });
+  el.addEventListener("pointermove", e => {
+    if(timer && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) cancel();
+  });
+  el.addEventListener("pointerup", () => { if(timer){ cancel(); onTap(); } });
+  el.addEventListener("pointerleave", cancel);
+  el.addEventListener("pointercancel", cancel);
+  el.addEventListener("contextmenu", e => e.preventDefault());
+}
+
+function toggleFavTag(t){
+  const i = state.favTags.indexOf(t);
+  if(i >= 0) state.favTags.splice(i, 1); else state.favTags.push(t);
+  savePrefs(); haptic(); syncMarks(); refreshFavRow();
+}
+function toggleFavMenu(id){
+  const i = state.favMenus.indexOf(id);
+  if(i >= 0) state.favMenus.splice(i, 1); else state.favMenus.push(id);
+  savePrefs(); haptic(); syncMarks(); refreshFavRow();
+}
+
+function favRowHtml(){
+  const ok = new Set(allowedTags());
+  const parts = [];
+  state.favTags.filter(t => ok.has(t)).forEach(t => {
+    parts.push(`<div class="chip ${tagCls(t)}" data-filter="${esc(t)}">#${esc(t)}</div>`);
+  });
+  state.favMenus.map(id => state.menus.find(m => m.id === id)).filter(Boolean).forEach(m => {
+    parts.push(`<div class="chip ${menuCls(m.id)}" data-cand="${esc(m.id)}">${esc(m.emoji)} ${esc(m.name)}</div>`);
+  });
+  return parts.length ? parts.join("") : '<span class="muted-note">칩이나 메뉴를 꾹 눌러서 즐겨찾기 추가</span>';
+}
+
+function refreshFavRow(){
+  const row = document.getElementById("favRow");
+  if(!row) return;
+  row.innerHTML = favRowHtml();
+  bindFilterEls(row);
+  bindCand(row);
+}
+
+function bindFilterEls(root){
+  (root || document).querySelectorAll("[data-filter]").forEach(el => {
+    const t = el.dataset.filter;
+    attachPress(el, () => {
+      if(state.filters.has(t)) state.filters.delete(t); else state.filters.add(t);
+      refreshHomeCounts();
+    }, () => toggleFavTag(t));
+  });
+}
+
+function bindCand(root){
+  (root || document).querySelectorAll("[data-cand]").forEach(el => {
+    const id = el.dataset.cand;
+    attachPress(el, () => {
+      if(state.candidates.has(id)) state.candidates.delete(id); else state.candidates.add(id);
+      refreshHomeCounts();
+    }, () => toggleFavMenu(id));
+  });
+}
+
+function exportFavLines(clean){
+  let out = "";
+  const ok = new Set(allowedTags());
+  const ft = state.favTags.filter(t => ok.has(t));
+  const fm = state.favMenus.map(id => state.menus.find(m => m.id === id)).filter(Boolean).map(m => clean(m.name));
+  if(ft.length) out += "#즐겨찾기태그 " + ft.map(clean).join(", ") + "\n";
+  if(fm.length) out += "#즐겨찾기메뉴 " + fm.join(" | ") + "\n";
+  return out;
+}
+
+function setTab(tab){
+  state.tab = tab;
+  state.editingId = null;
+  state.pendingDelete = null;
+  state.importMsg = "";
+  state.exportText = "";
+  if(tab !== "categories"){ state.catQuery = ""; state.catLimit = 50; }
+  if(tab === "recommend"){
+    state.stage = state.lastConfirmed ? "last" : "idle";
+    state.currentResult = null;
+  }
+  render();
+}
+
+function render(){
+  renderNav();
+  const c = document.getElementById("content");
+  const oldRow = document.getElementById("chipRow");
+  const keepScroll = oldRow ? oldRow.scrollLeft : 0;
+  const oldFav = document.getElementById("favRow");
+  const keepFav = oldFav ? oldFav.scrollLeft : 0;
+  if(state.tab === "recommend") c.innerHTML = renderRecommend();
+  else if(state.tab === "categories") c.innerHTML = `<div class="page">${renderCategories()}</div>`;
+  else c.innerHTML = `<div class="page">${renderAbout()}</div>`;
+  const newRow = document.getElementById("chipRow");
+  if(newRow) newRow.scrollLeft = keepScroll;
+  const newFav = document.getElementById("favRow");
+  if(newFav) newFav.scrollLeft = keepFav;
+  bindEvents();
+}
+
+function renderNav(){
+  const nav = document.getElementById("navbar");
+  const items = [
+    {id:"recommend", ico:"🎲", label:"메뉴 추천"},
+    {id:"categories", ico:"📋", label:"카테고리 목록"},
+    {id:"about", ico:"👤", label:"제작자"}
+  ];
+  nav.innerHTML = items.map(it => `
+    <div class="navbtn ${state.tab===it.id?'active':''}" data-nav="${it.id}">
+      <div class="ico">${it.ico}</div>
+      <div>${it.label}</div>
+    </div>
+  `).join("");
+}
+
+function renderRecommend(){
+  const counts = {};
+  state.menus.forEach(m => m.tags.forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+  const chips = allowedTags().map(t => `
+    <div class="chip ${tagCls(t)}" data-filter="${esc(t)}"><span class="star">★</span>#${esc(t)}<span class="cnt">${counts[t] || 0}</span></div>
+  `).join("");
+
+  let stageHtml = "";
+  if(state.stage === "idle"){
+    stageHtml = `<div class="empty">키워드를 고르거나 메뉴를 직접 골라서<br>위의 [메뉴 뽑기]를 눌러봐</div>`;
+  } else if(state.stage === "last"){
+    const item = state.lastConfirmed;
+    const tagHtml = item.tags.map(t => `<span class="tag">#${esc(t)}</span>`).join("");
+    stageHtml = `
+      <div class="ticket">
+        <div class="ticket-emoji">${esc(item.emoji)}</div>
+        <div class="ticket-eyebrow">최근 확정한 메뉴</div>
+        <div class="ticket-name">${esc(item.name)}</div>
+        <div class="ticket-tags">${tagHtml}</div>
+        <div class="btn-row">
+          <div class="reroll-btn" id="newRollBtn">다른 메뉴 뽑기</div>
+        </div>
+      </div>`;
+  } else if(state.stage === "no-match"){
+    stageHtml = `<div class="empty no-match">조건에 맞는 메뉴가 없어<br>필터를 줄여봐</div>`;
+  } else if(state.stage === "rolling"){
+    stageHtml = `
+      <div class="ticket">
+        <div class="ticket-emoji" id="rollEmoji">🍽️</div>
+        <div class="ticket-eyebrow">고르는 중...</div>
+        <div class="ticket-name" id="rollName">-</div>
+      </div>`;
+  } else if(state.stage === "result" && state.currentResult){
+    const item = state.currentResult;
+    const tagHtml = item.tags.map(t => `<span class="tag">#${esc(t)}</span>`).join("");
+    stageHtml = `
+      <div class="ticket">
+        <div class="ticket-emoji">${esc(item.emoji)}</div>
+        <div class="ticket-eyebrow">오늘의 추천</div>
+        <div class="ticket-name">${esc(item.name)}</div>
+        <div class="ticket-tags">${tagHtml}</div>
+        <div class="btn-row">
+          <div class="reroll-btn" id="rerollBtn">다시 추천하기</div>
+          <div class="confirm-btn" id="confirmBtn">확정하기</div>
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div class="topstack">
+      <div class="win">
+        <div class="win-head" id="menuToggle">
+          <span class="dname">소원이의 메뉴 빅데이터</span>
+          <span class="dstat">메뉴 ${state.menus.length} · 키워드 ${allowedTags().length} · 선택 <span id="candCount">${state.candidates.size}</span></span>
+          <span class="caret">${state.menuOpen ? "▲" : "▼"}</span>
+        </div>
+        ${state.menuOpen ? `
+          <div class="win-body">
+            <input class="search" id="menuSearch" type="text" placeholder="메뉴 검색" value="${esc(state.menuQuery)}">
+            <div class="menu-pick-list" id="pickList">${pickListHtml()}</div>
+          </div>` : ""}
+      </div>
+
+      <div class="win win-fav">
+        <span class="fav-mark">★</span>
+        <div class="chip-row" id="favRow">${favRowHtml()}</div>
+      </div>
+
+      <div class="win win-keys">
+        <div class="chip-row" id="chipRow">${chips || '<span class="muted-note">등록된 키워드가 없어</span>'}</div>
+      </div>
+
+      <div class="win win-mode">
+        <span class="seg">
+          <span class="seg-btn ${state.matchMode==='and'?'on':''}" data-mode="and">모두 포함</span>
+          <span class="seg-btn ${state.matchMode==='or'?'on':''}" data-mode="or">하나라도</span>
+        </span>
+        <span class="hint" id="hintText">${esc(poolHint())}</span>
+      </div>
+
+      <div class="win win-act">
+        <div class="act-clear" id="clearBtn">해제</div>
+        <button class="roll-btn" id="rollBtn">메뉴 뽑기 (후보 ${getPool().length}개)</button>
+      </div>
+    </div>
+
+    <div class="page">
+      <div class="stage" style="margin-top:0">${stageHtml}</div>
+      <div class="legend"><span style="color:var(--recent)">청록색</span> = 최근 선택 · <span style="color:var(--fav)">★</span> = 즐겨찾기 (키워드/메뉴를 꾹 눌러 추가·해제)</div>
+    </div>
+  `;
+}
+
+function categoryFilteredMenus(){
+  const q = state.catQuery.trim().toLowerCase().replace(/^#/, "");
+  if(!q) return state.menus;
+  return state.menus.filter(m => m.name.toLowerCase().includes(q) || m.tags.some(t => t.toLowerCase().includes(q)));
+}
+
+function catListHtml(){
+  const filtered = categoryFilteredMenus();
+  if(filtered.length === 0) return '<div class="muted-note">일치하는 메뉴 없음</div>';
+  const shown = filtered.slice(0, state.catLimit);
+  const cards = shown.map(m => {
+    const tagHtml = m.tags.map(t => `<span class="tag">#${esc(t)}</span>`).join("");
+    const isPendingDelete = state.pendingDelete === m.id;
+    return `
+      <div class="menu-card">
+        <div class="em">${esc(m.emoji)}</div>
+        <div class="info">
+          <div class="nm">${esc(m.name)}</div>
+          <div class="tg">${tagHtml}</div>
+        </div>
+        <div class="actions">
+          ${isPendingDelete ? `
+            <div class="confirm-inline">
+              <div class="icon-btn danger" data-delconfirm="${esc(m.id)}">삭제</div>
+              <div class="icon-btn" data-delcancel="${esc(m.id)}">취소</div>
+            </div>
+          ` : `
+            <div class="icon-btn" data-edit="${esc(m.id)}">수정</div>
+            <div class="icon-btn danger" data-del="${esc(m.id)}">삭제</div>
+          `}
+        </div>
+      </div>
+    `;
+  }).join("");
+  const more = filtered.length > shown.length
+    ? `<div class="more-btn" id="catMoreBtn">더 보기 (${filtered.length - shown.length}개 남음)</div>`
+    : "";
+  return cards + more;
+}
+
+function bindCatList(root){
+  const r = root || document;
+  r.querySelectorAll("[data-edit]").forEach(el => {
+    el.addEventListener("click", () => { state.editingId = el.dataset.edit; state.pendingDelete = null; render(); });
+  });
+  r.querySelectorAll("[data-del]").forEach(el => {
+    el.addEventListener("click", () => { state.pendingDelete = el.dataset.del; refreshCatList(); });
+  });
+  r.querySelectorAll("[data-delcancel]").forEach(el => {
+    el.addEventListener("click", () => { state.pendingDelete = null; refreshCatList(); });
+  });
+  r.querySelectorAll("[data-delconfirm]").forEach(el => {
+    el.addEventListener("click", async () => {
+      const id = el.dataset.delconfirm;
+      state.menus = state.menus.filter(m => m.id !== id);
+      state.candidates.delete(id);
+      state.favMenus = state.favMenus.filter(x => x !== id);
+      state.recent.menus = state.recent.menus.filter(x => x !== id);
+      savePrefs();
+      state.pendingDelete = null;
+      await saveMenus();
+      refreshCatList();
+      refreshDeadBox();
+    });
+  });
+  const moreBtn = r.querySelector("#catMoreBtn");
+  if(moreBtn) moreBtn.addEventListener("click", () => { state.catLimit += 50; refreshCatList(); });
+}
+
+function refreshCatList(){
+  const el = document.getElementById("catList");
+  if(!el) return;
+  el.innerHTML = catListHtml();
+  bindCatList(el);
+}
+
+function renderCategories(){
+  const editing = state.menus.find(m => m.id === state.editingId);
+  const formHtml = `
+    <div class="form-box">
+      <div class="section-label">${editing ? "메뉴 수정" : "새 메뉴 추가"}</div>
+      <div class="form-row">
+        <label>이모지</label>
+        <input type="text" id="fEmoji" maxlength="4" value="${esc(editing ? editing.emoji : '🍽️')}">
+      </div>
+      <div class="form-row">
+        <label>메뉴 이름</label>
+        <input type="text" id="fName" value="${esc(editing ? editing.name : '')}" placeholder="예: 마라샹궈">
+      </div>
+      <div class="form-row">
+        <label>카테고리 (쉼표로 구분)</label>
+        <input type="text" id="fTags" value="${esc(editing ? editing.tags.join(', ') : '')}" placeholder="예: 고기, 매운맛">
+      </div>
+      <div class="form-actions">
+        ${editing ? '<div class="ghost-btn" id="cancelEditBtn">취소</div>' : ''}
+        <div class="primary-btn" id="saveMenuBtn">${editing ? "수정 완료" : "추가하기"}</div>
+      </div>
+    </div>
+  `;
+
+  const total = state.menus.length;
+  const filteredCount = categoryFilteredMenus().length;
+
+  return `
+    <div class="title">카테고리 목록</div>
+    <p class="subtitle">메뉴별 카테고리를 확인하고 추가·수정·삭제할 수 있어</p>
+    ${formHtml}
+    ${renderImportBox()}
+    <div id="deadBoxAnchor">${deadBoxHtml()}</div>
+    <div class="cat-head">
+      <div class="section-label">메뉴 목록 (${filteredCount}${state.catQuery.trim() ? ` / 전체 ${total}` : ""})</div>
+    </div>
+    <input class="search" id="catSearch" type="text" placeholder="이름 또는 #태그로 검색" value="${esc(state.catQuery)}">
+    <div id="catList">${catListHtml()}</div>
+  `;
+}
+
+function renderAbout(){
+  return `
+    <div class="title">제작자</div>
+    <p class="subtitle">&nbsp;</p>
+    <div class="about-card">
+      <div class="about-emoji">🧑‍🍳</div>
+      <div class="about-name">Kiminsu</div>
+      <div class="about-desc">여자친구를 위해 만든<br>오늘의 메뉴 추천 앱</div>
+    </div>
+  `;
+}
+
+function bindEvents(){
+  document.querySelectorAll("[data-nav]").forEach(el => {
+    el.addEventListener("click", () => setTab(el.dataset.nav));
+  });
+
+  if(state.tab === "recommend"){
+    bindFilterEls(document);
+    document.querySelectorAll("[data-mode]").forEach(el => {
+      el.addEventListener("click", () => {
+        state.matchMode = el.dataset.mode;
+        document.querySelectorAll("[data-mode]").forEach(x => x.classList.toggle("on", x.dataset.mode === state.matchMode));
+        refreshHomeCounts();
+      });
+    });
+    const clearBtn = document.getElementById("clearBtn");
+    if(clearBtn) clearBtn.addEventListener("click", () => { state.filters.clear(); state.candidates.clear(); render(); });
+    const menuToggle = document.getElementById("menuToggle");
+    if(menuToggle) menuToggle.addEventListener("click", () => { state.menuOpen = !state.menuOpen; render(); });
+    const menuSearch = document.getElementById("menuSearch");
+    if(menuSearch) menuSearch.addEventListener("input", () => {
+      state.menuQuery = menuSearch.value;
+      const pl = document.getElementById("pickList");
+      pl.innerHTML = pickListHtml();
+      bindCand(pl);
+    });
+    bindCand();
+    const rollBtn = document.getElementById("rollBtn");
+    if(rollBtn) rollBtn.addEventListener("click", roll);
+    const rerollBtn = document.getElementById("rerollBtn");
+    if(rerollBtn) rerollBtn.addEventListener("click", roll);
+    const newRollBtn = document.getElementById("newRollBtn");
+    if(newRollBtn) newRollBtn.addEventListener("click", roll);
+    const confirmBtn = document.getElementById("confirmBtn");
+    if(confirmBtn) confirmBtn.addEventListener("click", confirmPick);
+  }
+
+  if(state.tab === "categories"){
+    const importBtn = document.getElementById("importBtn");
+    if(importBtn) importBtn.addEventListener("click", async () => {
+      const text = document.getElementById("fImport").value;
+      if(!text.trim()){ state.importMsg = "입력 없음"; render(); return; }
+      const r = applyImport(text);
+      await saveMenus();
+      saveExtraTags();
+      savePrefs();
+      let msg = `추가 ${r.added} · 수정 ${r.updated} · 중복 무시 ${r.dup} · 없는 메뉴 ${r.missing} · 형식 오류 ${r.bad}`;
+      if(r.newTags) msg += ` · 신규 태그 ${r.newTags}`;
+      if(r.favs) msg += ` · 즐겨찾기 +${r.favs}`;
+      if(r.badLines.length) msg += `<br>형식 오류 줄: ${r.badLines.join(", ")}번`;
+      if(r.missingLines.length) msg += `<br>없는 메뉴라 수정 못한 줄: ${r.missingLines.join(", ")}번`;
+      if(r.dropped.size) msg += `<br>허용 목록에 없어 제외된 태그: ` + [...r.dropped].map(t => "#" + esc(t)).join(" ");
+      state.importMsg = msg;
+      render();
+    });
+    const exportBtn = document.getElementById("exportBtn");
+    if(exportBtn) exportBtn.addEventListener("click", () => {
+      state.exportText = buildExportText();
+      downloadText("menu-data.txt", state.exportText);
+      render();
+    });
+    const loadBtn = document.getElementById("loadBtn");
+    const fFile = document.getElementById("fFile");
+    if(loadBtn && fFile){
+      loadBtn.addEventListener("click", () => fFile.click());
+      fFile.addEventListener("change", () => {
+        const f = fFile.files && fFile.files[0];
+        if(!f) return;
+        const reader = new FileReader();
+        reader.onload = () => { document.getElementById("fImport").value = String(reader.result || ""); };
+        reader.readAsText(f, "utf-8");
+      });
+    }
+    const saveBtn = document.getElementById("saveMenuBtn");
+    if(saveBtn) saveBtn.addEventListener("click", saveMenuForm);
+    const cancelBtn = document.getElementById("cancelEditBtn");
+    if(cancelBtn) cancelBtn.addEventListener("click", () => { state.editingId = null; render(); });
+    const catSearch = document.getElementById("catSearch");
+    if(catSearch) catSearch.addEventListener("input", () => {
+      state.catQuery = catSearch.value;
+      state.catLimit = 50;
+      refreshCatList();
+    });
+    bindCatList(document.getElementById("catList"));
+    bindDeadBox(document.getElementById("deadBoxAnchor"));
+  }
+}
+
+async function saveMenuForm(){
+  const emoji = document.getElementById("fEmoji").value.trim() || "🍽️";
+  const name = document.getElementById("fName").value.trim().replace(/\|/g, "/");
+  const tagsRaw = document.getElementById("fTags").value.trim();
+  if(!name){ return; }
+  const tags = tagsRaw.split(",").map(t => t.trim()).filter(Boolean);
+
+  if(state.editingId){
+    const m = state.menus.find(x => x.id === state.editingId);
+    if(m){ m.emoji = emoji; m.name = name; m.tags = tags; }
+    state.editingId = null;
+  } else {
+    state.menus.push({ id: String(Date.now()), emoji, name, tags });
+  }
+  await saveMenus();
+  render();
+}
+
+function roll(){
+  const pool = getPool();
+  state.menuOpen = false;
+  if(pool.length === 0){
+    state.stage = "no-match";
+    render();
+    return;
+  }
+  pushRecentSelection();
+  state.stage = "rolling";
+  render();
+
+  const emojiEl = document.getElementById("rollEmoji");
+  const nameEl = document.getElementById("rollName");
+  let ticks = 0;
+  const maxTicks = 14;
+  const spin = setInterval(() => {
+    const r = pool[Math.floor(Math.random() * pool.length)];
+    if(emojiEl) emojiEl.textContent = r.emoji;
+    if(nameEl) nameEl.textContent = r.name;
+    ticks++;
+    if(ticks >= maxTicks){
+      clearInterval(spin);
+      state.currentResult = pool[Math.floor(Math.random() * pool.length)];
+      state.stage = "result";
+      render();
+    }
+  }, 70);
+}
+
+function confirmPick(){
+  const picked = state.currentResult;
+  const ticket = document.querySelector(".ticket");
+  if(ticket){
+    const st = document.createElement("div");
+    st.className = "stamp-on-ticket";
+    st.textContent = "확정!";
+    ticket.appendChild(st);
+    ticket.classList.add("stamping");
+  }
+  if(picked){ pushFront(state.recent.menus, [picked.id], 8); savePrefs(); }
+  setTimeout(async () => {
+    state.filters.clear();
+    state.candidates.clear();
+    await saveLastConfirmed(picked);
+    setTab("recommend");
+  }, 1100);
+}
+
+(async function init(){
+  await loadMenus();
+  loadExtraTags();
+  loadPrefs();
+  await loadLastConfirmed();
+  if(state.lastConfirmed) state.stage = "last";
+  render();
+})();
+</script>
+</body>
+</html>
